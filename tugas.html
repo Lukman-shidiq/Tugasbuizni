@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasirku - Sistem kasir</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EDF0F5;--surface:#fff;--ink:#14213D;--muted:#66708A;--line:#DCE1EB;--accent:#0F8B6D;--accent-d:#0B6F56;--warn:#E9A820;--danger:#C8372D;--paper:#FFFEF7;--r:10px}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+[x-cloak]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;background:var(--ink);color:#fff;transition:background .15s}
+.btn:hover{background:#243459}
+.btn.accent{background:var(--accent)}.btn.accent:hover{background:var(--accent-d)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}.btn.ghost:hover{background:#f3f5fa}
+.btn.danger{background:var(--danger)}.btn.danger:hover{background:#a82c24}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.block{width:100%;padding:12px;font-size:15px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{border:0;background:none;color:var(--danger);font-weight:600;cursor:pointer;font-size:12px;padding:0 2px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-weight:600;font-size:13px}
+.input{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff;width:100%}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(15,139,109,.15)}
+.hint{font-size:12px;color:var(--muted)}
+.msg{padding:9px 12px;border-radius:8px;margin-bottom:12px;font-size:13px}
+.msg.err{background:#FBE9E7;color:#8E241C}.msg.ok{background:#E3F4EE;color:#0B5C47}
+
+/* loading bar */
+.loadbar{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:100;opacity:0;transition:width .25s ease,opacity .3s;box-shadow:0 0 8px rgba(15,139,109,.6);pointer-events:none}
+.loadbar.on{opacity:1}
+
+/* auth */
+.auth{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-form{display:flex;align-items:center;justify-content:center;padding:32px;background:var(--surface)}
+.auth-box{width:100%;max-width:380px}
+.auth-side{background:var(--ink);display:flex;align-items:center;justify-content:center;padding:32px}
+.tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;margin:18px 0}
+.tabs button{flex:1;border:0;background:none;padding:8px;border-radius:7px;font-weight:600;color:var(--muted);cursor:pointer}
+.tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,33,61,.12)}
+
+/* shell (menubar di atas, semua perangkat) */
+.shell{display:block;min-height:100vh}
+.side{position:sticky;top:0;z-index:20;background:var(--ink);color:#C9D1E6;display:flex;flex-direction:row;align-items:center;gap:4px;padding:8px 18px;overflow-x:auto;scrollbar-width:none;box-shadow:0 2px 10px rgba(20,33,61,.15)}
+.side::-webkit-scrollbar{display:none}
+.brand{color:#fff;font-weight:800;font-size:19px;padding:0 14px 0 0;flex:none}
+.nav{display:block;flex:none;width:auto;text-align:center;border:0;background:none;color:inherit;padding:8px 14px;border-radius:8px;font-weight:600;font-size:13.5px;white-space:nowrap;cursor:pointer}
+.nav:hover{background:rgba(255,255,255,.08)}.nav.on{background:#fff;color:var(--ink)}
+.userbox{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none;padding-left:14px;font-weight:600;font-size:13px}
+.userbox .store{color:#8D98B8}
+.userbox .btn.ghost{color:#fff;border-color:rgba(255,255,255,.28)}
+.userbox .btn.ghost:hover{background:rgba(255,255,255,.1)}
+.main{padding:20px 22px;min-width:0;max-width:1400px;margin:0 auto}
+.grow{flex:1}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.head .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+h1{font-size:22px;font-weight:800}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--line)}
+
+/* kasir */
+.pos{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 12px;cursor:pointer;font-weight:600;font-size:13px}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pcard{text-align:left;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-height:96px}
+.pcard:hover:not(:disabled){border-color:var(--accent)}
+.pcard:disabled{opacity:.45;cursor:not-allowed}
+.pcard b{font-weight:700}
+.pcard small{color:var(--muted);font-size:12px}
+.pcard .pr{margin-top:auto;font-weight:800;color:var(--accent-d);padding-top:4px}
+.pos-side{position:sticky;top:64px}
+.receipt{position:relative;background:var(--paper);padding:18px 16px 14px;border-radius:6px 6px 0 0;margin-bottom:18px;box-shadow:0 6px 18px rgba(20,33,61,.1)}
+.receipt::after{content:"";position:absolute;left:0;right:0;top:100%;height:10px;background:conic-gradient(from 135deg at top,#0000,var(--paper) 1deg 89deg,#0000 90deg) 50%/20px 100%;filter:drop-shadow(0 4px 3px rgba(20,33,61,.08))}
+.r-head{text-align:center;border-bottom:1px dashed #b9b6a6;padding-bottom:10px;margin-bottom:8px}
+.r-head b{font-size:15px;display:block}
+.r-head div{font-size:12px;color:#6b6a5c}
+.r-items{max-height:270px;overflow:auto;border-bottom:1px dashed #b9b6a6;margin-bottom:8px;padding-bottom:4px}
+.r-item{padding:6px 0}
+.r-item .nm{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size:13px}
+.r-line{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:2px 0}
+.r-line.total{font-size:19px;font-weight:700;padding-top:6px}
+.qty{display:inline-flex;align-items:center;gap:4px}
+.qty button{width:24px;height:24px;border-radius:6px;border:1px solid #cfcbb8;background:#fff;cursor:pointer;font-weight:700;line-height:1}
+.qty input{width:42px;text-align:center;border:1px solid #cfcbb8;border-radius:6px;padding:2px;background:#fff}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.change{display:flex;justify-content:space-between;font-weight:700;padding:8px 0 12px}
+
+/* tables */
+.scroll{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;min-width:560px}
+.tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);background:#fafbfd;white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right!important;font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:#E7ECF5}
+.badge.low{background:#FFF1D1;color:#8A5A00}.badge.out{background:#FBE0DD;color:#8E241C}.badge.ok{background:#DDF2EA;color:#0B5C47}
+.empty{padding:32px 16px;text-align:center;color:var(--muted)}
+
+/* report */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.stat{padding:14px 16px}.stat small{color:var(--muted);display:block}.stat b{font-size:21px;font-weight:800}
+.bars{display:flex;align-items:flex-end;gap:6px;height:170px;padding:14px 14px 10px}
+.bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;min-width:0}
+.bar i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.bar span{font-size:10px;color:var(--muted);white-space:nowrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pad{padding:16px}
+.sect{font-weight:700;padding:14px 16px 6px}
+
+/* modal, toast */
+.modal-back{position:fixed;inset:0;background:rgba(20,33,61,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:480px;max-height:92vh;overflow:auto;padding:20px}
+.modal h2{font-size:18px;font-weight:800;margin-bottom:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:30px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;z-index:80;font-weight:600;max-width:90vw;text-align:center}
+.toast.err{background:var(--danger)}
+.paper{background:var(--paper);padding:16px;border-radius:6px;border:1px solid #e7e4d2}
+
+@media(max-width:1000px){.pos{grid-template-columns:1fr}.pos-side{position:static}.two{grid-template-columns:1fr}}
+@media(max-width:820px){
+ .auth{grid-template-columns:1fr}.auth-side{display:none}
+ .side{padding:8px 10px}
+ .brand{font-size:17px;padding-right:8px}
+ .userbox .store{display:none}
+ .main{padding:14px}
+}
+@media print{
+ body *{visibility:hidden}
+ .print-area,.print-area *{visibility:visible}
+ .print-area{position:fixed;left:0;top:0;width:76mm;border:0;background:#fff}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.1/cdn.min.js"></script>
+</head>
+
+<body x-data="app()" x-init="init()" x-cloak @keydown.escape.window="pm=false;cm=false;rcpt=null;dlg.open=false">
+
+<div class="loadbar" :class="{on:loading}" :style="'width:'+progress+'%'"></div>
+
+<!-- ================= AUTH ================= -->
+<template x-if="!user">
+<div class="auth">
+  <div class="auth-form">
+    <div class="auth-box">
+      <div style="font-weight:800;font-size:26px">Kasirku</div>
+      <p style="color:var(--muted)">Catat penjualan, stok, dan laporan toko dari satu tempat.</p>
+
+      <div class="tabs">
+        <button :class="{on:authTab==='masuk'}" @click="setTab('masuk')">Masuk</button>
+        <button :class="{on:authTab==='daftar'}" @click="setTab('daftar')">Daftar</button>
+        <button :class="{on:authTab==='lupa'}" @click="setTab('lupa')">Lupa sandi</button>
+      </div>
+
+      <div class="msg err" x-show="!persistent">Penyimpanan browser tidak tersedia di sini. Data akan hilang saat halaman ditutup. Buka file ini langsung di browser agar data tersimpan.</div>
+      <div class="msg" :class="authMsg.type" x-show="authMsg.text" x-text="authMsg.text"></div>
+
+      <!-- masuk -->
+      <form x-show="authTab==='masuk'" @submit.prevent="login()">
+        <div class="field"><label for="l-u">Username</label><input id="l-u" class="input" x-model="lf.username" autocomplete="username" required></div>
+        <div class="field"><label for="l-p">Kata sandi</label><input id="l-p" class="input" :type="showPw?'text':'password'" x-model="lf.password" autocomplete="current-password" required></div>
+        <label class="hint" style="display:flex;gap:6px;align-items:center;margin-bottom:14px"><input type="checkbox" x-model="showPw"> Tampilkan kata sandi</label>
+        <button class="btn accent block">Masuk</button>
+      </form>
+
+      <!-- daftar -->
+      <form x-show="authTab==='daftar'" @submit.prevent="register()">
+        <div class="field"><label for="r-n">Nama lengkap</label><input id="r-n" class="input" x-model="rf.name" required></div>
+        <div class="field"><label for="r-u">Username</label><input id="r-u" class="input" x-model="rf.username" autocomplete="username" placeholder="huruf kecil, angka, titik, garis bawah" required><span class="hint">3 sampai 20 karakter.</span></div>
+        <div class="field"><label for="r-p">Kata sandi</label><input id="r-p" class="input" :type="showPw?'text':'password'" x-model="rf.password" autocomplete="new-password" required><span class="hint">Minimal 6 karakter.</span></div>
+        <div class="field"><label for="r-q">Pertanyaan keamanan</label><select id="r-q" class="input" x-model="rf.q"><template x-for="s in questions" :key="s"><option x-text="s"></option></template></select></div>
+        <div class="field"><label for="r-a">Jawaban</label><input id="r-a" class="input" x-model="rf.a" required><span class="hint">Dipakai untuk mengatur ulang sandi jika Anda lupa.</span></div>
+        <button class="btn accent block">Buat akun</button>
+      </form>
+
+      <!-- lupa sandi -->
+      <form x-show="authTab==='lupa'" @submit.prevent="ff.step===1?findQuestion():resetPassword()">
+        <div class="field"><label for="f-u">Username</label><input id="f-u" class="input" x-model="ff.username" :readonly="ff.step===2" required></div>
+        <template x-if="ff.step===2">
+          <div>
+            <div class="field"><label>Pertanyaan keamanan</label><div class="paper" x-text="ff.q"></div></div>
+            <div class="field"><label for="f-a">Jawaban</label><input id="f-a" class="input" x-model="ff.a" required></div>
+            <div class="field"><label for="f-p">Kata sandi baru</label><input id="f-p" class="input" :type="showPw?'text':'password'" x-model="ff.password" autocomplete="new-password" required></div>
+          </div>
+        </template>
+        <button class="btn accent block" x-text="ff.step===1?'Lanjut':'Simpan sandi baru'"></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="auth-side">
+    <div class="receipt mono" style="width:300px;margin-bottom:24px">
+      <div class="r-head"><b>TOKO SAYA</b><div>Jl. Contoh No. 1</div></div>
+      <div class="r-line"><span>Kopi sachet</span><span>4.000</span></div>
+      <div class="r-line"><span>Roti tawar</span><span>16.000</span></div>
+      <div class="r-line"><span>Air mineral 2x</span><span>8.000</span></div>
+      <div style="border-top:1px dashed #b9b6a6;margin:8px 0"></div>
+      <div class="r-line total"><span>Total</span><span>28.000</span></div>
+      <div class="r-line"><span>Tunai</span><span>50.000</span></div>
+      <div class="r-line"><span>Kembali</span><span>22.000</span></div>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- ================= APP ================= -->
+<template x-if="user">
+<div class="shell">
+  <nav class="side" aria-label="Menu utama">
+    <div class="brand">Kasirku</div>
+    <button class="nav" :class="{on:page==='kasir'}" @click="go('kasir')">Kasir</button>
+    <button class="nav" :class="{on:page==='produk'}" @click="go('produk')">Produk</button>
+    <button class="nav" :class="{on:page==='pelanggan'}" @click="go('pelanggan')">Pelanggan</button>
+    <button class="nav" :class="{on:page==='riwayat'}" @click="go('riwayat')">Riwayat</button>
+    <button class="nav" :class="{on:page==='laporan'}" @click="go('laporan')">Laporan</button>
+    <button class="nav" :class="{on:page==='pengaturan'}" @click="go('pengaturan')">Pengaturan</button>
+    <div class="userbox">
+      <span class="store" x-text="settings.storeName"></span>
+      <span x-text="user.name"></span>
+      <button class="btn ghost sm" @click="logout()">Keluar</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- KASIR -->
+    <section x-show="page==='kasir'">
+      <div class="head"><h1>Kasir</h1></div>
+      <div class="pos">
+        <div>
+          <input class="input" placeholder="Cari nama atau kode barang. Tekan Enter untuk menambah" x-model="q" @keydown.enter.prevent="scanEnter()" aria-label="Cari barang">
+          <div class="chips">
+            <button class="chip" :class="{on:cat===''}" @click="cat=''">Semua</button>
+            <template x-for="c in categories" :key="c"><button class="chip" :class="{on:cat===c}" @click="cat=c" x-text="c"></button></template>
+          </div>
+          <div class="grid">
+            <template x-for="p in filteredProducts" :key="p.id">
+              <button class="pcard" :disabled="p.stock<=0" @click="addToCart(p)">
+                <b x-text="p.name"></b>
+                <small class="mono" x-text="p.sku"></small>
+                <small x-text="p.stock>0?('Stok '+p.stock):'Stok habis'"></small>
+                <span class="pr" x-text="rp(p.price)"></span>
+              </button>
+            </template>
+          </div>
+          <div class="empty card" x-show="!filteredProducts.length">
+            <span x-show="!products.length">Belum ada barang. Tambahkan dulu di menu Produk.</span>
+            <span x-show="products.length">Tidak ada barang yang cocok dengan pencarian.</span>
+          </div>
+        </div>
+
+        <div class="pos-side">
+          <div class="receipt">
+            <div class="r-head mono">
+              <b x-text="settings.storeName"></b>
+              <div x-text="settings.address"></div>
+              <div x-text="nowText"></div>
+            </div>
+            <div class="r-items mono">
+              <div class="empty" x-show="!cartItems.length">Klik barang untuk menambahkannya ke struk.</div>
+              <template x-for="it in cartItems" :key="it.id">
+                <div class="r-item">
+                  <div class="nm"><span x-text="it.name"></span><span x-text="rp(it.price*it.qty)"></span></div>
+                  <div class="r-line">
+                    <span class="qty">
+                      <button type="button" @click="dec(it.id)" aria-label="Kurangi jumlah">-</button>
+                      <input type="number" min="1" :value="it.qty" @change="setQty(it.id,$event.target)" aria-label="Jumlah">
+                      <button type="button" @click="inc(it.id)" aria-label="Tambah jumlah">+</button>
+                    </span>
+                    <span><span x-text="'@ '+rp(it.price)"></span> <button class="link" @click="removeItem(it.id)">Hapus</button></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="mono">
+              <div class="r-line"><span>Subtotal</span><span x-text="rp(subtotal)"></span></div>
+              <div class="r-line" x-show="disc>0"><span>Diskon</span><span x-text="'-'+rp(disc)"></span></div>
+              <div class="r-line" x-show="n(settings.tax)>0"><span x-text="'Pajak '+settings.tax+'%'"></span><span x-text="rp(tax)"></span></div>
+              <div class="r-line total"><span>Total</span><span x-text="rp(total)"></span></div>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <div class="row2">
+              <div class="field"><label for="k-c">Pelanggan</label>
+                <select id="k-c" class="input" x-model="customerId"><option value="">Umum</option><template x-for="c in customers" :key="c.id"><option :value="c.id" x-text="c.name"></option></template></select></div>
+              <div class="field"><label for="k-d">Diskon (Rp)</label><input id="k-d" class="input" type="number" min="0" x-model="discount"></div>
+            </div>
+            <div class="field"><label for="k-m">Metode bayar</label>
+              <select id="k-m" class="input" x-model="method"><template x-for="m in methods" :key="m"><option x-text="m"></option></template></select></div>
+            <div x-show="method==='Tunai'">
+              <div class="field"><label for="k-p">Uang diterima</label><input id="k-p" class="input" type="number" min="0" x-model="paid" @keydown.enter.prevent="checkout()"></div>
+              <div class="quick">
+                <template x-for="(v,i) in quick" :key="v"><button type="button" class="chip" @click="paid=v" x-text="i===0?'Uang pas':rp(v)"></button></template>
+              </div>
+              <div class="change"><span>Kembalian</span><span x-text="rp(Math.max(0,n(paid)-total))"></span></div>
+            </div>
+            <div class="actions" style="justify-content:stretch">
+              <button class="btn ghost" :disabled="!cart.length" @click="clearCart()">Kosongkan</button>
+              <button class="btn accent" style="flex:1" :disabled="!cart.length" @click="checkout()" x-text="'Bayar '+rp(total)"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUK -->
+    <section x-show="page==='produk'">
+      <div class="head">
+        <h1>Produk</h1>
+        <div class="tools">
+          <input class="input" style="width:230px" placeholder="Cari barang" x-model="pq" aria-label="Cari barang">
+          <button class="btn accent" @click="openProduct()">Tambah barang</button>
+        </div>
+      </div>
+      <div class="card scroll">
+        <table class="tbl">
+          <thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th class="num">Harga beli</th><th class="num">Harga jual</th><th class="num">Stok</th><th></th></tr></thead>
+          <tbody>
+            <template x-for="p in productList" :key="p.id">
+              <tr>
+                <td class="mono" x-text="p.sku"></td>
+                <td><b x-text="p.name"></b></td>
+                <td x-text="p.category||'-'"></td>
+                <td class="num" x-text="rp(p.cost)"></td>
+                <td class="num" x-text="rp(p.price)"></td>
+                <td class="num"><span class="badge" :class="p.stock<=0?'out':(p.stock<=p.min?'low':'ok')" x-text="p.stock<=0?'Habis':p.stock"></span></td>
+                <td><div class="acts"><button class="btn ghost sm" @click="openProduct(p)">Edit</button><button class="btn ghost sm" style="color:var(--danger)" @click="deleteProduct(p)">Hapus</button></div></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="empty" x-show="!productList.length">Belum ada barang yang cocok.</div>
+      </div>
+    </section>
+
+    <!-- PELANGGAN -->
+    <section x-show="page==='pelanggan'">
+      <div class="head">
+        <h1>Pelanggan</h1>
+        <div class="tools">
+          <input class="input" style="width:230px" placeholder="Cari pelanggan" x-model="cq" aria-label="Cari pelanggan">
+          <button class="btn accent" @click="openCustomer()">Tambah pelanggan</button>
+        </div>
+      </div>
+      <div class="card scroll">
+        <table class="tbl">
+          <thead><tr><th>Nama</th><th>No. HP</th><th>Alamat</th><th class="num">Total belanja</th><th></th></tr></thead>
+          <tbody>
+            <template x-for="c in customerList" :key="c.id">
+              <tr>
+                <td><b x-text="c.name"></b></td>
+                <td x-text="c.phone||'-'"></td>
+                <td x-text="c.address||'-'"></td>
+                <td class="num" x-text="rp(spent(c.id))"></td>
+                <td><div class="acts"><button class="btn ghost sm" @click="openCustomer(c)">Edit</button><button class="btn ghost sm" style="color:var(--danger)" @click="deleteCustomer(c)">Hapus</button></div></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="empty" x-show="!customerList.length">Belum ada pelanggan. Transaksi tanpa pelanggan dicatat sebagai Umum.</div>
+      </div>
+    </section>
+
+    <!-- RIWAYAT -->
+    <section x-show="page==='riwayat'">
+      <div class="head">
+        <h1>Riwayat transaksi</h1>
+        <div class="tools">
+          <input class="input" style="width:200px" placeholder="Cari no. struk atau pelanggan" x-model="hq" aria-label="Cari transaksi">
+          <input class="input" style="width:160px" type="date" x-model="hd" aria-label="Filter tanggal">
+          <button class="btn ghost" @click="hq='';hd=''" x-show="hq||hd">Reset</button>
+          <button class="btn ghost" @click="exportCsv()" :disabled="!filteredSales.length">Unduh CSV</button>
+        </div>
+      </div>
+      <div class="card scroll">
+        <table class="tbl">
+          <thead><tr><th>No. struk</th><th>Waktu</th><th>Pelanggan</th><th>Metode</th><th class="num">Total</th><th></th></tr></thead>
+          <tbody>
+            <template x-for="s in filteredSales" :key="s.id">
+              <tr>
+                <td class="mono" x-text="s.no"></td>
+                <td x-text="fmtDate(s.date)"></td>
+                <td x-text="s.customerName"></td>
+                <td><span class="badge" x-text="s.method"></span></td>
+                <td class="num"><b x-text="rp(s.total)"></b></td>
+                <td><div class="acts"><button class="btn ghost sm" @click="rcpt=s">Struk</button><button class="btn ghost sm" style="color:var(--danger)" @click="deleteSale(s)">Hapus</button></div></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="empty" x-show="!filteredSales.length">Belum ada transaksi.</div>
+      </div>
+    </section>
+
+    <!-- LAPORAN -->
+    <section x-show="page==='laporan'">
+      <div class="head">
+        <h1>Laporan penjualan</h1>
+        <select class="input" style="width:170px" x-model="period" aria-label="Periode">
+          <option value="today">Hari ini</option><option value="7">7 hari terakhir</option><option value="30">30 hari terakhir</option><option value="all">Semua waktu</option>
+        </select>
+      </div>
+      <div class="stats">
+        <div class="card stat"><small>Omzet</small><b x-text="rp(repStats.omzet)"></b></div>
+        <div class="card stat"><small>Laba kotor</small><b x-text="rp(repStats.laba)"></b></div>
+        <div class="card stat"><small>Transaksi</small><b x-text="repStats.trx"></b></div>
+        <div class="card stat"><small>Barang terjual</small><b x-text="repStats.items"></b></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="sect" x-text="'Omzet harian, '+(period==='30'?'30':'7')+' hari terakhir'"></div>
+        <div class="bars">
+          <template x-for="d in repDays" :key="d.key">
+            <div class="bar" :title="d.label+': '+rp(d.total)"><i :style="'height:'+d.pct+'%'"></i><span x-text="d.label"></span></div>
+          </template>
+        </div>
+      </div>
+      <div class="two">
+        <div class="card">
+          <div class="sect">Barang terlaris</div>
+          <div class="scroll"><table class="tbl" style="min-width:0">
+            <thead><tr><th>Barang</th><th class="num">Terjual</th><th class="num">Omzet</th></tr></thead>
+            <tbody><template x-for="t in topProducts" :key="t.name"><tr><td x-text="t.name"></td><td class="num" x-text="t.qty"></td><td class="num" x-text="rp(t.rev)"></td></tr></template></tbody>
+          </table></div>
+          <div class="empty" x-show="!topProducts.length">Belum ada penjualan pada periode ini.</div>
+        </div>
+        <div class="card">
+          <div class="sect">Berdasarkan metode bayar</div>
+          <div class="scroll"><table class="tbl" style="min-width:0">
+            <thead><tr><th>Metode</th><th class="num">Transaksi</th><th class="num">Total</th></tr></thead>
+            <tbody><template x-for="m in byMethod" :key="m.name"><tr><td x-text="m.name"></td><td class="num" x-text="m.count"></td><td class="num" x-text="rp(m.total)"></td></tr></template></tbody>
+          </table></div>
+          <div class="empty" x-show="!byMethod.length">Belum ada penjualan pada periode ini.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PENGATURAN -->
+    <section x-show="page==='pengaturan'">
+      <div class="head"><h1>Pengaturan</h1></div>
+      <div class="two">
+        <form class="card pad" @submit.prevent="saveSettings()">
+          <div class="sect" style="padding:0 0 10px">Data toko</div>
+          <div class="field"><label for="s-n">Nama toko</label><input id="s-n" class="input" x-model="sf.storeName" required></div>
+          <div class="field"><label for="s-a">Alamat</label><input id="s-a" class="input" x-model="sf.address"></div>
+          <div class="row2">
+            <div class="field"><label for="s-t">Telepon</label><input id="s-t" class="input" x-model="sf.phone"></div>
+            <div class="field"><label for="s-x">Pajak (%)</label><input id="s-x" class="input" type="number" min="0" max="100" step="0.5" x-model="sf.tax"></div>
+          </div>
+          <div class="field"><label for="s-f">Pesan di bawah struk</label><input id="s-f" class="input" x-model="sf.footer"></div>
+          <button class="btn accent">Simpan pengaturan</button>
+        </form>
+
+        <div>
+          <form class="card pad" style="margin-bottom:16px" @submit.prevent="changePassword()">
+            <div class="sect" style="padding:0 0 10px">Ganti kata sandi</div>
+            <div class="msg" :class="pwMsg.type" x-show="pwMsg.text" x-text="pwMsg.text"></div>
+            <div class="field"><label for="pw-o">Sandi saat ini</label><input id="pw-o" class="input" type="password" x-model="pw.old" autocomplete="current-password" required></div>
+            <div class="field"><label for="pw-n">Sandi baru</label><input id="pw-n" class="input" type="password" x-model="pw.neu" autocomplete="new-password" required></div>
+            <button class="btn">Ganti sandi</button>
+          </form>
+          <div class="card pad">
+            <div class="sect" style="padding:0 0 10px">Data</div>
+            <p class="hint" style="margin-bottom:10px">Data tersimpan di browser ini. Unduh cadangan secara berkala.</p>
+            <div class="tools" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn ghost" @click="backup()">Unduh cadangan</button>
+              <label class="btn ghost" style="display:inline-block">Pulihkan dari file<input type="file" accept="application/json" hidden @change="restore($event)"></label>
+              <button class="btn ghost" style="color:var(--danger)" @click="wipe()">Hapus semua data toko</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</template>
+
+<!-- ================= MODALS ================= -->
+<div class="modal-back" x-show="pm" x-cloak @click.self="pm=false">
+  <form class="modal" @submit.prevent="saveProduct()">
+    <h2 x-text="pf.id?'Edit barang':'Tambah barang'"></h2>
+    <div class="msg err" x-show="formErr" x-text="formErr"></div>
+    <div class="row2">
+      <div class="field"><label for="p-s">Kode barang</label><input id="p-s" class="input mono" x-model="pf.sku" placeholder="Otomatis jika kosong"></div>
+      <div class="field"><label for="p-c">Kategori</label><input id="p-c" class="input" list="cats" x-model="pf.category"><datalist id="cats"><template x-for="c in categories" :key="c"><option :value="c"></option></template></datalist></div>
+    </div>
+    <div class="field"><label for="p-n">Nama barang</label><input id="p-n" class="input" x-model="pf.name" required></div>
+    <div class="row2">
+      <div class="field"><label for="p-b">Harga beli (Rp)</label><input id="p-b" class="input" type="number" min="0" x-model="pf.cost"></div>
+      <div class="field"><label for="p-j">Harga jual (Rp)</label><input id="p-j" class="input" type="number" min="1" x-model="pf.price" required></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="p-t">Stok</label><input id="p-t" class="input" type="number" min="0" x-model="pf.stock" required></div>
+      <div class="field"><label for="p-m">Batas stok menipis</label><input id="p-m" class="input" type="number" min="0" x-model="pf.min"></div>
+    </div>
+    <div class="actions"><button type="button" class="btn ghost" @click="pm=false">Batal</button><button class="btn accent">Simpan barang</button></div>
+  </form>
+</div>
+
+<div class="modal-back" x-show="cm" x-cloak @click.self="cm=false">
+  <form class="modal" @submit.prevent="saveCustomer()">
+    <h2 x-text="cf.id?'Edit pelanggan':'Tambah pelanggan'"></h2>
+    <div class="msg err" x-show="formErr" x-text="formErr"></div>
+    <div class="field"><label for="c-n">Nama</label><input id="c-n" class="input" x-model="cf.name" required></div>
+    <div class="field"><label for="c-p">No. HP</label><input id="c-p" class="input" inputmode="tel" x-model="cf.phone"></div>
+    <div class="field"><label for="c-a">Alamat</label><input id="c-a" class="input" x-model="cf.address"></div>
+    <div class="actions"><button type="button" class="btn ghost" @click="cm=false">Batal</button><button class="btn accent">Simpan pelanggan</button></div>
+  </form>
+</div>
+
+<div class="modal-back" x-show="rcpt" x-cloak @click.self="rcpt=null">
+  <div class="modal" style="max-width:380px">
+    <template x-if="rcpt">
+      <div>
+        <div class="paper print-area mono">
+          <div class="r-head"><b x-text="settings.storeName"></b><div x-text="settings.address"></div><div x-text="settings.phone"></div></div>
+          <div class="r-line"><span x-text="rcpt.no"></span></div>
+          <div class="r-line"><span x-text="fmtDate(rcpt.date)"></span></div>
+          <div class="r-line"><span>Kasir</span><span x-text="rcpt.cashier"></span></div>
+          <div class="r-line"><span>Pelanggan</span><span x-text="rcpt.customerName"></span></div>
+          <div style="border-top:1px dashed #b9b6a6;margin:8px 0"></div>
+          <template x-for="it in rcpt.items" :key="it.id">
+            <div style="padding:3px 0"><div class="r-line" style="font-weight:600"><span x-text="it.name"></span></div>
+              <div class="r-line"><span x-text="it.qty+' x '+rp(it.price)"></span><span x-text="rp(it.qty*it.price)"></span></div></div>
+          </template>
+          <div style="border-top:1px dashed #b9b6a6;margin:8px 0"></div>
+          <div class="r-line"><span>Subtotal</span><span x-text="rp(rcpt.subtotal)"></span></div>
+          <div class="r-line" x-show="rcpt.discount>0"><span>Diskon</span><span x-text="'-'+rp(rcpt.discount)"></span></div>
+          <div class="r-line" x-show="rcpt.tax>0"><span x-text="'Pajak '+rcpt.taxRate+'%'"></span><span x-text="rp(rcpt.tax)"></span></div>
+          <div class="r-line total"><span>Total</span><span x-text="rp(rcpt.total)"></span></div>
+          <div class="r-line"><span x-text="rcpt.method"></span><span x-text="rp(rcpt.paid)"></span></div>
+          <div class="r-line" x-show="rcpt.method==='Tunai'"><span>Kembali</span><span x-text="rp(rcpt.change)"></span></div>
+          <div style="text-align:center;margin-top:12px;font-size:12px" x-text="settings.footer"></div>
+        </div>
+        <div class="actions" style="margin-top:14px"><button class="btn ghost" @click="rcpt=null">Tutup</button><button class="btn accent" @click="window.print()">Cetak struk</button></div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<div class="modal-back" x-show="dlg.open" x-cloak @click.self="dlg.open=false" style="z-index:70">
+  <div class="modal" style="max-width:380px" role="alertdialog">
+    <h2>Konfirmasi</h2>
+    <p style="margin-bottom:16px" x-text="dlg.text"></p>
+    <div class="actions"><button class="btn ghost" @click="dlg.open=false">Batal</button><button class="btn danger" @click="confirmYes()" x-text="dlg.btn"></button></div>
+  </div>
+</div>
+
+<div class="toast" :class="toastType" x-show="toastMsg" x-cloak x-text="toastMsg" role="status"></div>
+
+<script>
+/* ---------- penyimpanan: localStorage, fallback ke memori ---------- */
+const store=(()=>{let mem={},ok=false;try{localStorage.setItem('__t','1');localStorage.removeItem('__t');ok=true}catch(e){}
+ return{persistent:ok,
+  get(k,d){try{const v=ok?localStorage.getItem(k):mem[k];return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){const s=JSON.stringify(v);if(ok){try{localStorage.setItem(k,s)}catch(e){mem[k]=s}}else mem[k]=s},
+  del(k){if(ok){try{localStorage.removeItem(k)}catch(e){}}delete mem[k]}}})();
+
+const K={users:'ksr_users',session:'ksr_session',products:'ksr_products',customers:'ksr_customers',sales:'ksr_sales',settings:'ksr_settings',seeded:'ksr_seeded'};
+const QUESTIONS=['Nama hewan peliharaan pertama Anda?','Nama sekolah dasar Anda?','Kota tempat Anda lahir?','Nama panggilan masa kecil Anda?','Makanan favorit Anda?'];
+const n=v=>{const x=Number(String(v==null?'':v).replace(/[^\d.-]/g,''));return isFinite(x)?x:0};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad2=x=>String(x).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+async function hash(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('kasirku:'+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of 'kasirku:'+s)h=((h<<5)+h+c.charCodeAt(0))>>>0;return'f'+h}}
+
+function app(){return{
+ persistent:store.persistent,
+ user:null,page:'kasir',authTab:'masuk',authMsg:{type:'',text:''},showPw:false,
+ lf:{username:'',password:''},
+ rf:{name:'',username:'',password:'',q:QUESTIONS[0],a:''},
+ ff:{step:1,username:'',q:'',a:'',password:''},
+ questions:QUESTIONS,methods:['Tunai','QRIS','Transfer bank','E-wallet'],
+ products:[],customers:[],sales:[],settings:{},sf:{},
+ q:'',cat:'',cart:[],customerId:'',discount:'',method:'Tunai',paid:'',nowText:'',
+ pq:'',pf:{},pm:false,cq:'',cf:{},cm:false,formErr:'',
+ hq:'',hd:'',rcpt:null,period:'7',
+ pw:{old:'',neu:''},pwMsg:{type:'',text:''},
+ dlg:{open:false,text:'',ok:null,btn:'Hapus'},toastMsg:'',toastType:'',_tt:null,
+ loading:false,progress:0,_lt:null,
+ n,
+
+ /* ---------- init ---------- */
+ init(){
+  this.startLoad();
+  this.products=store.get(K.products,[]);this.customers=store.get(K.customers,[]);this.sales=store.get(K.sales,[]);
+  this.settings=store.get(K.settings,{storeName:'Toko Saya',address:'Jl. Contoh No. 1',phone:'',tax:0,footer:'Terima kasih sudah berbelanja'});
+  if(!store.get(K.seeded,false)&&!this.products.length){
+   const s=(sku,name,category,cost,price,stock)=>({id:uid(),sku,name,category,cost,price,stock,min:10});
+   this.products=[s('BRG-001','Mie instan goreng','Makanan',2800,3500,120),s('BRG-002','Air mineral 600 ml','Minuman',2500,4000,80),s('BRG-003','Teh kemasan botol','Minuman',3500,5000,48),s('BRG-004','Kopi sachet','Minuman',1500,2000,150),s('BRG-005','Roti tawar','Makanan',12500,16000,20),s('BRG-006','Gula pasir 1 kg','Sembako',14000,17000,30),s('BRG-007','Minyak goreng 1 L','Sembako',16000,19500,25),s('BRG-008','Telur 1/2 kg','Sembako',13000,15500,6)];
+   this.persist();store.set(K.seeded,true);
+  }
+  this.sf={...this.settings};
+  const sid=store.get(K.session,null);
+  if(sid){const u=store.get(K.users,[]).find(x=>x.id===sid);if(u)this.user={id:u.id,name:u.name,username:u.username}}
+  this.tick();setInterval(()=>this.tick(),30000);
+  setTimeout(()=>this.endLoad(),600);
+ },
+ tick(){this.nowText=this.fmtDate(new Date().toISOString())},
+ persist(){store.set(K.products,this.products);store.set(K.customers,this.customers);store.set(K.sales,this.sales);store.set(K.settings,this.settings)},
+
+ /* ---------- util ---------- */
+ startLoad(){clearInterval(this._lt);this.loading=true;this.progress=8;
+  this._lt=setInterval(()=>{this.progress=Math.min(90,this.progress+Math.random()*14)},120)},
+ endLoad(){clearInterval(this._lt);this.progress=100;
+  setTimeout(()=>{this.loading=false;setTimeout(()=>{if(!this.loading)this.progress=0},300)},250)},
+ go(p){if(p===this.page)return;this.startLoad();setTimeout(()=>{this.page=p;this.endLoad()},300)},
+ rp(v){return'Rp '+Math.round(n(v)).toLocaleString('id-ID')},
+ fmtDate(iso){return new Date(iso).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})},
+ toast(msg,type=''){this.toastMsg=msg;this.toastType=type;clearTimeout(this._tt);this._tt=setTimeout(()=>this.toastMsg='',2600)},
+ ask(text,ok,btn='Hapus'){this.dlg={open:true,text,ok,btn}},
+ confirmYes(){const f=this.dlg.ok;this.dlg.open=false;if(f)f()},
+ download(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()},
+
+ /* ---------- auth ---------- */
+ setTab(t){this.authTab=t;this.authMsg={type:'',text:''};this.ff={step:1,username:'',q:'',a:'',password:''}},
+ err(t){this.authMsg={type:'err',text:t}},
+ async register(){
+  const f=this.rf,name=f.name.trim(),un=f.username.trim().toLowerCase(),a=f.a.trim().toLowerCase();
+  if(name.length<2)return this.err('Nama lengkap minimal 2 karakter.');
+  if(!/^[a-z0-9_.]{3,20}$/.test(un))return this.err('Username 3 sampai 20 karakter: huruf kecil, angka, titik, atau garis bawah.');
+  if(f.password.length<6)return this.err('Kata sandi minimal 6 karakter.');
+  if(a.length<2)return this.err('Jawaban pertanyaan keamanan wajib diisi.');
+  const users=store.get(K.users,[]);
+  if(users.some(u=>u.username===un))return this.err('Username sudah dipakai. Coba username lain.');
+  const u={id:uid(),name,username:un,pass:await hash(f.password),q:f.q,a:await hash(a),createdAt:new Date().toISOString()};
+  users.push(u);store.set(K.users,users);store.set(K.session,u.id);
+  this.user={id:u.id,name:u.name,username:u.username};this.page='kasir';
+  this.rf={name:'',username:'',password:'',q:QUESTIONS[0],a:''};this.authMsg={type:'',text:''};
+ },
+ async login(){
+  const un=this.lf.username.trim().toLowerCase(),u=store.get(K.users,[]).find(x=>x.username===un);
+  if(!u||u.pass!==await hash(this.lf.password))return this.err('Username atau kata sandi salah.');
+  store.set(K.session,u.id);this.user={id:u.id,name:u.name,username:u.username};this.page='kasir';
+  this.lf={username:'',password:''};this.authMsg={type:'',text:''};
+ },
+ logout(){store.del(K.session);this.user=null;this.cart=[];this.authTab='masuk';this.authMsg={type:'',text:''}},
+ findQuestion(){
+  const un=this.ff.username.trim().toLowerCase(),u=store.get(K.users,[]).find(x=>x.username===un);
+  if(!u)return this.err('Username tidak ditemukan.');
+  this.authMsg={type:'',text:''};this.ff.q=u.q;this.ff.step=2;
+ },
+ async resetPassword(){
+  const users=store.get(K.users,[]),un=this.ff.username.trim().toLowerCase(),u=users.find(x=>x.username===un);
+  if(!u)return this.err('Username tidak ditemukan.');
+  if(u.a!==await hash(this.ff.a.trim().toLowerCase()))return this.err('Jawaban keamanan tidak cocok.');
+  if(this.ff.password.length<6)return this.err('Kata sandi baru minimal 6 karakter.');
+  u.pass=await hash(this.ff.password);store.set(K.users,users);
+  this.lf={username:un,password:''};this.authTab='masuk';this.ff={step:1,username:'',q:'',a:'',password:''};
+  this.authMsg={type:'ok',text:'Kata sandi berhasil diubah. Silakan masuk.'};
+ },
+ async changePassword(){
+  const users=store.get(K.users,[]),u=users.find(x=>x.id===this.user.id);
+  if(!u||u.pass!==await hash(this.pw.old))return this.pwMsg={type:'err',text:'Sandi saat ini salah.'};
+  if(this.pw.neu.length<6)return this.pwMsg={type:'err',text:'Sandi baru minimal 6 karakter.'};
+  u.pass=await hash(this.pw.neu);store.set(K.users,users);this.pw={old:'',neu:''};this.pwMsg={type:'ok',text:'Kata sandi berhasil diganti.'};
+ },
+
+ /* ---------- produk (CRUD) ---------- */
+ get categories(){return[...new Set(this.products.map(p=>p.category).filter(Boolean))].sort()},
+ get filteredProducts(){const k=this.q.trim().toLowerCase();return this.products.filter(p=>(!this.cat||p.category===this.cat)&&(!k||p.name.toLowerCase().includes(k)||p.sku.toLowerCase().includes(k))).sort((a,b)=>a.name.localeCompare(b.name))},
+ get productList(){const k=this.pq.trim().toLowerCase();return this.products.filter(p=>!k||p.name.toLowerCase().includes(k)||p.sku.toLowerCase().includes(k)||(p.category||'').toLowerCase().includes(k)).sort((a,b)=>a.name.localeCompare(b.name))},
+ nextSku(){let i=this.products.length+1,s;do{s='BRG-'+String(i++).padStart(3,'0')}while(this.products.some(p=>p.sku===s));return s},
+ openProduct(p){this.pf=p?{...p}:{id:null,sku:'',name:'',category:'',cost:'',price:'',stock:'',min:5};this.formErr='';this.pm=true},
+ saveProduct(){
+  const f=this.pf,name=(f.name||'').trim(),price=n(f.price),cost=n(f.cost),stock=Math.floor(n(f.stock)),min=Math.floor(n(f.min));
+  if(!name)return this.formErr='Nama barang wajib diisi.';
+  if(price<=0)return this.formErr='Harga jual harus lebih dari 0.';
+  if(cost<0||stock<0||min<0)return this.formErr='Harga beli, stok, dan batas stok tidak boleh negatif.';
+  let sku=(f.sku||'').trim().toUpperCase();if(!sku)sku=this.nextSku();
+  if(this.products.some(p=>p.sku===sku&&p.id!==f.id))return this.formErr='Kode barang sudah dipakai barang lain.';
+  const d={id:f.id||uid(),sku,name,category:(f.category||'').trim(),cost,price,stock,min};
+  this.products=f.id?this.products.map(p=>p.id===f.id?d:p):[d,...this.products];
+  this.persist();this.pm=false;this.toast(f.id?'Perubahan disimpan':'Barang ditambahkan');
+ },
+ deleteProduct(p){this.ask('Hapus barang "'+p.name+'"? Riwayat transaksi lama tidak ikut terhapus.',()=>{
+  this.products=this.products.filter(x=>x.id!==p.id);this.cart=this.cart.filter(c=>c.id!==p.id);this.persist();this.toast('Barang dihapus')})},
+
+ /* ---------- pelanggan (CRUD) ---------- */
+ get customerList(){const k=this.cq.trim().toLowerCase();return this.customers.filter(c=>!k||c.name.toLowerCase().includes(k)||(c.phone||'').includes(k)).sort((a,b)=>a.name.localeCompare(b.name))},
+ spent(id){return this.sales.filter(s=>s.customerId===id).reduce((t,s)=>t+s.total,0)},
+ openCustomer(c){this.cf=c?{...c}:{id:null,name:'',phone:'',address:''};this.formErr='';this.cm=true},
+ saveCustomer(){
+  const f=this.cf,name=(f.name||'').trim(),phone=(f.phone||'').trim();
+  if(!name)return this.formErr='Nama pelanggan wajib diisi.';
+  if(phone&&!/^[0-9+\-\s]{8,16}$/.test(phone))return this.formErr='Nomor HP tidak valid.';
+  const d={id:f.id||uid(),name,phone,address:(f.address||'').trim()};
+  this.customers=f.id?this.customers.map(c=>c.id===f.id?d:c):[d,...this.customers];
+  this.persist();this.cm=false;this.toast(f.id?'Perubahan disimpan':'Pelanggan ditambahkan');
+ },
+ deleteCustomer(c){this.ask('Hapus pelanggan "'+c.name+'"?',()=>{
+  this.customers=this.customers.filter(x=>x.id!==c.id);if(this.customerId===c.id)this.customerId='';this.persist();this.toast('Pelanggan dihapus')})},
+
+ /* ---------- kasir ---------- */
+ get cartItems(){return this.cart.map(c=>{const p=this.products.find(x=>x.id===c.id);return p?{...p,qty:c.qty}:null}).filter(Boolean)},
+ get subtotal(){return this.cartItems.reduce((t,i)=>t+i.price*i.qty,0)},
+ get disc(){return Math.min(Math.max(0,n(this.discount)),this.subtotal)},
+ get tax(){return Math.round((this.subtotal-this.disc)*n(this.settings.tax)/100)},
+ get total(){return this.subtotal-this.disc+this.tax},
+ get quick(){const t=this.total;if(!t)return[];return[...new Set([t,Math.ceil(t/10000)*10000,Math.ceil(t/50000)*50000,Math.ceil(t/100000)*100000])].slice(0,4)},
+ addToCart(p){
+  const c=this.cart.find(x=>x.id===p.id),have=c?c.qty:0;
+  if(have+1>p.stock)return this.toast('Stok '+p.name+' hanya '+p.stock,'err');
+  if(c)c.qty++;else this.cart.push({id:p.id,qty:1});
+ },
+ inc(id){const p=this.products.find(x=>x.id===id);if(p)this.addToCart(p)},
+ dec(id){const c=this.cart.find(x=>x.id===id);if(!c)return;c.qty--;if(c.qty<=0)this.removeItem(id)},
+ setQty(id,el){
+  const p=this.products.find(x=>x.id===id),c=this.cart.find(x=>x.id===id);if(!p||!c)return;
+  let q=Math.floor(n(el.value));
+  if(q<=0)return this.removeItem(id);
+  if(q>p.stock){q=p.stock;this.toast('Stok '+p.name+' hanya '+p.stock,'err')}
+  c.qty=q;el.value=q;
+ },
+ removeItem(id){this.cart=this.cart.filter(c=>c.id!==id)},
+ clearCart(){this.cart=[];this.discount='';this.paid='';this.customerId=''},
+ scanEnter(){
+  const k=this.q.trim().toLowerCase();if(!k)return;
+  let p=this.products.find(x=>x.sku.toLowerCase()===k);
+  if(!p&&this.filteredProducts.length===1)p=this.filteredProducts[0];
+  if(!p)return this.toast('Barang tidak ditemukan','err');
+  if(p.stock<=0)return this.toast(p.name+' stok habis','err');
+  this.addToCart(p);this.q='';
+ },
+ checkout(){
+  if(!this.cartItems.length)return this.toast('Struk masih kosong','err');
+  const total=this.total;let paid=total;
+  if(this.method==='Tunai'){paid=n(this.paid);if(paid<total)return this.toast('Uang diterima kurang '+this.rp(total-paid),'err')}
+  for(const it of this.cartItems)if(it.qty>it.stock)return this.toast('Stok '+it.name+' hanya '+it.stock,'err');
+  const d=new Date(),pre='TRX-'+ymd(d).replace(/-/g,'')+'-';
+  const last=Math.max(0,...this.sales.filter(s=>s.no.startsWith(pre)).map(s=>parseInt(s.no.slice(-3))||0));
+  const cust=this.customers.find(c=>c.id===this.customerId);
+  const sale={id:uid(),no:pre+String(last+1).padStart(3,'0'),date:d.toISOString(),cashier:this.user.name,customerId:cust?cust.id:'',customerName:cust?cust.name:'Umum',
+   items:this.cartItems.map(i=>({id:i.id,name:i.name,price:i.price,cost:i.cost,qty:i.qty})),
+   subtotal:this.subtotal,discount:this.disc,taxRate:n(this.settings.tax),tax:this.tax,total,method:this.method,paid,change:paid-total};
+  this.products=this.products.map(p=>{const it=sale.items.find(i=>i.id===p.id);return it?{...p,stock:p.stock-it.qty}:p});
+  this.sales=[sale,...this.sales];this.persist();this.clearCart();this.rcpt=sale;
+  this.startLoad();setTimeout(()=>this.endLoad(),400);
+  this.toast('Pembayaran berhasil');
+ },
+
+ /* ---------- riwayat ---------- */
+ get filteredSales(){const k=this.hq.trim().toLowerCase();return this.sales.filter(s=>(!k||s.no.toLowerCase().includes(k)||s.customerName.toLowerCase().includes(k))&&(!this.hd||ymd(new Date(s.date))===this.hd))},
+ deleteSale(s){this.ask('Hapus transaksi '+s.no+'? Stok barang akan dikembalikan.',()=>{
+  this.products=this.products.map(p=>{const it=s.items.find(i=>i.id===p.id);return it?{...p,stock:p.stock+it.qty}:p});
+  this.sales=this.sales.filter(x=>x.id!==s.id);this.persist();this.toast('Transaksi dihapus')})},
+ exportCsv(){
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=[['No. struk','Waktu','Kasir','Pelanggan','Metode','Subtotal','Diskon','Pajak','Total'].map(q).join(',')];
+  this.filteredSales.forEach(s=>rows.push([s.no,this.fmtDate(s.date),s.cashier,s.customerName,s.method,s.subtotal,s.discount,s.tax,s.total].map(q).join(',')));
+  this.download('riwayat-transaksi.csv','\ufeff'+rows.join('\n'),'text/csv;charset=utf-8');
+ },
+
+ /* ---------- laporan ---------- */
+ get repSales(){
+  if(this.period==='all')return this.sales;
+  const now=new Date(),days=this.period==='today'?0:Number(this.period)-1,start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-days);
+  return this.sales.filter(s=>new Date(s.date)>=start);
+ },
+ get repStats(){
+  const r=this.repSales;
+  return{omzet:r.reduce((t,s)=>t+s.total,0),trx:r.length,
+   items:r.reduce((t,s)=>t+s.items.reduce((a,i)=>a+i.qty,0),0),
+   laba:r.reduce((t,s)=>t+s.items.reduce((a,i)=>a+(i.price-i.cost)*i.qty,0)-s.discount,0)};
+ },
+ get repDays(){
+  const len=this.period==='30'?30:7,out=[],now=new Date();
+  for(let i=len-1;i>=0;i--){
+   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i),key=ymd(d);
+   out.push({key,label:len===30?String(d.getDate()):d.getDate()+'/'+(d.getMonth()+1),total:this.sales.filter(s=>ymd(new Date(s.date))===key).reduce((t,s)=>t+s.total,0)});
+  }
+  const max=Math.max(1,...out.map(o=>o.total));
+  return out.map(o=>({...o,pct:Math.round(o.total/max*80)}));
+ },
+ get topProducts(){
+  const m={};this.repSales.forEach(s=>s.items.forEach(i=>{m[i.name]=m[i.name]||{name:i.name,qty:0,rev:0};m[i.name].qty+=i.qty;m[i.name].rev+=i.qty*i.price}));
+  return Object.values(m).sort((a,b)=>b.qty-a.qty).slice(0,5);
+ },
+ get byMethod(){
+  const m={};this.repSales.forEach(s=>{m[s.method]=m[s.method]||{name:s.method,count:0,total:0};m[s.method].count++;m[s.method].total+=s.total});
+  return Object.values(m).sort((a,b)=>b.total-a.total);
+ },
+
+ /* ---------- pengaturan & data ---------- */
+ saveSettings(){
+  const f=this.sf,tax=n(f.tax);
+  if(!(f.storeName||'').trim())return this.toast('Nama toko wajib diisi','err');
+  if(tax<0||tax>100)return this.toast('Pajak harus antara 0 dan 100','err');
+  this.settings={storeName:f.storeName.trim(),address:(f.address||'').trim(),phone:(f.phone||'').trim(),tax,footer:(f.footer||'').trim()};
+  this.persist();this.toast('Pengaturan disimpan');
+ },
+ backup(){this.download('cadangan-kasirku-'+ymd(new Date())+'.json',JSON.stringify({products:this.products,customers:this.customers,sales:this.sales,settings:this.settings}),'application/json')},
+ restore(e){
+  const file=e.target.files[0];e.target.value='';if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+   const d=JSON.parse(r.result);if(!Array.isArray(d.products)||!Array.isArray(d.sales)||!Array.isArray(d.customers))throw 0;
+   this.ask('Pulihkan data dari file ini? Data toko saat ini akan diganti.',()=>{
+    this.products=d.products;this.customers=d.customers;this.sales=d.sales;if(d.settings)this.settings=d.settings;this.sf={...this.settings};this.cart=[];this.persist();this.toast('Data berhasil dipulihkan')},'Pulihkan');
+  }catch(err){this.toast('File cadangan tidak valid','err')}};
+  r.readAsText(file);
+ },
+ wipe(){this.ask('Hapus semua barang, pelanggan, dan transaksi? Tindakan ini tidak bisa dibatalkan.',()=>{
+  this.products=[];this.customers=[];this.sales=[];this.cart=[];this.persist();this.toast('Semua data toko dihapus')},'Hapus semua')}
+}}
+</script>
+</body>
+</html>
